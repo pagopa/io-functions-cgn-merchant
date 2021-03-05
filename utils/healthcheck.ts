@@ -1,4 +1,5 @@
 import { CosmosClient } from "@azure/cosmos";
+import { readableReport } from "@pagopa/ts-commons/lib/reporters";
 import {
   common as azurestorageCommon,
   createBlobService,
@@ -15,7 +16,6 @@ import {
   TaskEither,
   tryCatch
 } from "fp-ts/lib/TaskEither";
-import { readableReport } from "italia-ts-commons/lib/reporters";
 import fetch from "node-fetch";
 import { getConfig, IConfig } from "./config";
 
@@ -138,8 +138,11 @@ export const checkApplicationHealth = (): HealthCheck<ProblemSource, true> =>
         // tslint:disable readonly-array beacuse the following is actually mutable
         Array<TaskEither<ReadonlyArray<HealthProblem<ProblemSource>>, true>>
       >(
-        checkAzureCosmosDbHealth(config.COSMOSDB_URI, config.COSMOSDB_KEY),
-        checkAzureStorageHealth(config.QueueStorageConnection)
+        checkAzureCosmosDbHealth(
+          config.COSMOSDB_CGN_URI,
+          config.COSMOSDB_CGN_KEY
+        ),
+        checkAzureStorageHealth(config.CGN_STORAGE_CONNECTION_STRING)
       )
     )
     .map(_ => true);

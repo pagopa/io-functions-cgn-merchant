@@ -1,49 +1,95 @@
 swagger: "2.0"
 info:
   version: 1.1.0
-  title: IO Function API
+  title: IO Functions CGN Merchant
   contact:
     name: IO team
     url: https://forum.italia.it/c/progetto-io
   x-logo:
     url: https://io.italia.it/assets/img/io-logo-blue.svg
   description: >
-    Documentation of the IO Function API here.
-host: api.cd.italia.it
-basePath: "/template"
+    This Specs are intended for all CGN operators that must integrate their e-commerce
+    portal through CGN API discounts system.
+host: api.cgn.italia.it
+basePath: "/api/v1"
 schemes:
   - https
+security:
+  - ApiKey: []
 paths:
-  "/echo/{input}":
-    parameters:
-      - name: input
-        in: path
-        type: string
-        required: true
-        description: test input.
-    get:
-      operationId: echo
-      summary: Echo API
-      description: Some API description here.
+  "/merchant/cgn/otp/{otpcode}/validate":
+    post:
+      operationId: validateOtp
+      summary: |
+        Validate a CGN OTP
+      description: |
+        Validate an OTP related to a CGN (Carta Giovani Nazionale).
+        This endpoint could be called for 2 different use cases:
+        - When an operator wants just to verify an OTP
+        - When an operator wants to verify an OTP and invalidate it at the same time (i.e: checkout completed)
+      parameters:
+        - $ref: "#/parameters/OtpCode"
+        - in: body
+          name: body
+          schema:
+            $ref: "#/definitions/ValidateOtpPayload"
+          description: The request wrapper of a user data processing choice.
       responses:
         "200":
-          description: Found.
+          description: OTP validation success.
           schema:
-            "$ref": "#/definitions/Input"
-          examples:
-            application/json:
-              id: "10000AAAA"
-              output: "hello world !"
+            $ref: "#/definitions/OtpValidationResponse"
         "401":
-          description: Unauthorized
+          description: Wrong or missing API key.
+        "403":
+          description: Forbidden.
         "404":
-          description: Not found.
-      parameters: []
+          description: OTP Not Found/Invalid
+        "500":
+          description: Service unavailable.
+          schema:
+            $ref: "#/definitions/ProblemJson"
+consumes:
+  - application/json
+produces:
+  - application/json
+parameters:
+  OtpCode:
+    name: otpcode
+    description: The unique otp code that can be used for applying CGN discounts
+    in: path
+    type: string
+    required: true
+    minLength: 9
+    maxLength: 13
+    pattern: "^[A-Z0-9]{9,13}$"
+
+securityDefinitions:
+  ApiKey:
+    type: apiKey
+    name: X-Functions-Key
+    in: header
+    description: The API key to access this function app.
+
 definitions:
-  Input:
+  Timestamp:
+    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v17.3.0/openapi/definitions.yaml#/Timestamp"
+  ProblemJson:
+    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v17.3.0/openapi/definitions.yaml#/ProblemJson"
+  
+  ValidateOtpPayload:
     type: object
     properties:
-      id:
-        type: string
-      output:
-        type: string
+      invalidate_otp:
+        type: boolean
+        default: false
+    required:
+      - invalidate_otp
+  OtpValidationResponse:
+    type: object
+    properties:
+      expires_at:
+        $ref: "#/definitions/Timestamp"
+    required:
+      - expires_at
+      
