@@ -10,7 +10,7 @@ info:
   description: >
     This Specs are intended for all CGN operators that must integrate their e-commerce
     portal through CGN API discounts system.
-host: api.cgn.italia.it
+host: api.io.italia.it
 basePath: "/api/v1"
 schemes:
   - https
