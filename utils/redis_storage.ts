@@ -74,8 +74,6 @@ export const getTask = (
   tryCatch(
     () =>
       new Promise<Either<Error, Option<string>>>(resolve =>
-        // Set key to hold the string value. If key already holds a value, it is overwritten, regardless of its type.
-        // @see https://redis.io/commands/set
         redisClient.get(key, (err, response) =>
           resolve(singleValueReply(err, response))
         )
@@ -83,16 +81,14 @@ export const getTask = (
     toError
   ).chain(fromEither);
 
-export const existsKeyTask = (
+export const deleteTask = (
   redisClient: RedisClient,
   key: string
 ): TaskEither<Error, boolean> =>
   tryCatch(
     () =>
       new Promise<Either<Error, boolean>>(resolve =>
-        // Set key to hold the string value. If key already holds a value, it is overwritten, regardless of its type.
-        // @see https://redis.io/commands/set
-        redisClient.exists(key, (err, response) =>
+        redisClient.del(key, (err, response) =>
           resolve(integerRepl(err, response, 1))
         )
       ),
