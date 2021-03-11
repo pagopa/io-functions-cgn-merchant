@@ -7,6 +7,12 @@ import {
   ResponseErrorInternal,
   ResponseErrorNotFound
 } from "@pagopa/ts-commons/lib/responses";
+import {
+  IResponseErrorForbiddenNotAuthorized,
+  IResponseErrorInternal,
+  IResponseSuccessJson,
+  ResponseSuccessJson
+} from "@pagopa/ts-commons/lib/responses";
 import { FiscalCode } from "@pagopa/ts-commons/lib/strings";
 import { toError, tryCatch2v } from "fp-ts/lib/Either";
 import { identity } from "fp-ts/lib/function";
@@ -26,12 +32,6 @@ import {
   wrapRequestHandler
 } from "io-functions-commons/dist/src/utils/request_middleware";
 import * as t from "io-ts";
-import {
-  IResponseErrorForbiddenNotAuthorized,
-  IResponseErrorInternal,
-  IResponseSuccessJson,
-  ResponseSuccessJson
-} from "italia-ts-commons/lib/responses";
 import { RedisClient } from "redis";
 import { Otp } from "../generated/definitions/Otp";
 import { OtpCode } from "../generated/definitions/OtpCode";
