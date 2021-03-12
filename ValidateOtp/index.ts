@@ -8,7 +8,7 @@ import { setAppContext } from "io-functions-commons/dist/src/utils/middlewares/c
 import createAzureFunctionHandler from "io-functions-express/dist/src/createAzureFunctionsHandler";
 
 import { REDIS_CLIENT } from "../utils/redis";
-import { GetValidateOtp } from "./handler";
+import { ValidateOtp } from "./handler";
 
 // tslint:disable-next-line: no-let
 let logger: Context["log"] | undefined;
@@ -22,10 +22,7 @@ const app = express();
 secureExpressApp(app);
 
 // Add express route
-app.post(
-  "/api/v1/merchant/cgn/otp/:otpcode/validate",
-  GetValidateOtp(REDIS_CLIENT)
-);
+app.post("/api/v1/merchant/cgn/otp/validate", ValidateOtp(REDIS_CLIENT));
 
 const azureFunctionHandler = createAzureFunctionHandler(app);
 
