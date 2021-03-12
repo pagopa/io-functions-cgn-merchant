@@ -17,7 +17,7 @@ schemes:
 security:
   - ApiKey: []
 paths:
-  "/merchant/cgn/otp/{otpcode}/validate":
+  "/merchant/cgn/otp/validate":
     post:
       operationId: validateOtp
       summary: |
@@ -28,7 +28,6 @@ paths:
         - When an operator wants just to verify an OTP
         - When an operator wants to verify an OTP and invalidate it at the same time (i.e: checkout completed)
       parameters:
-        - $ref: "#/parameters/OtpCode"
         - in: body
           name: body
           schema:
@@ -53,16 +52,6 @@ consumes:
   - application/json
 produces:
   - application/json
-parameters:
-  OtpCode:
-    name: otpcode
-    description: The unique otp code that can be used for applying CGN discounts
-    in: path
-    type: string
-    required: true
-    minLength: 9
-    maxLength: 13
-    pattern: "^[A-Z0-9]{9,13}$"
 
 securityDefinitions:
   ApiKey:
@@ -76,15 +65,11 @@ definitions:
     $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v17.3.0/openapi/definitions.yaml#/Timestamp"
   ProblemJson:
     $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v17.3.0/openapi/definitions.yaml#/ProblemJson"
+  OtpCode:
+    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-cgn/v0.2.1/openapi/index.yaml#/definitions/OtpCode"
+  Otp:
+    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-cgn/v0.2.1/openapi/index.yaml#/definitions/Otp"
   
-  ValidateOtpPayload:
-    type: object
-    properties:
-      invalidate_otp:
-        type: boolean
-        default: false
-    required:
-      - invalidate_otp
   OtpValidationResponse:
     type: object
     properties:
@@ -92,4 +77,16 @@ definitions:
         $ref: "#/definitions/Timestamp"
     required:
       - expires_at
+  
+  ValidateOtpPayload:
+    type: object
+    properties:
+      otp_code:
+        $ref: "#/definitions/OtpCode"
+      invalidate_otp:
+        type: boolean
+        default: false
+    required:
+      - otp_code
+      - invalidate_otp
       
