@@ -1,6 +1,7 @@
 import * as express from "express";
 
 import { Context } from "@azure/functions";
+import { readableReport } from "@pagopa/ts-commons/lib/reporters";
 import {
   IResponseErrorNotFound,
   ResponseErrorInternal,
@@ -78,18 +79,16 @@ const retrieveOtp = (
         fromEither(
           parseJSON(otpPayloadString, toError).chain(_ =>
             CommonOtpPayload.decode(_).mapLeft(
-              () => new Error("Cannot decode Otp Payload")
+              e => new Error(`Cannot decode Otp Payload [${readableReport(e)}]`)
             )
           )
-        ).chain(otpPayload =>
-          fromEither(
-            OtpResponseAndFiscalCode.decode({
-              fiscalCode: otpPayload.fiscalCode,
-              otpResponse: {
-                expires_at: otpPayload.expiresAt
-              }
-            }).bimap(() => new Error("Cannot decode Otp Payload"), some)
-          )
+        ).map(otpPayload =>
+          some({
+            fiscalCode: otpPayload.fiscalCode,
+            otpResponse: {
+              expires_at: otpPayload.expiresAt
+            }
+          })
         )
     )
   );
