@@ -1,14 +1,13 @@
 import * as express from "express";
 
 import { Context } from "@azure/functions";
-import { NonNegativeInteger } from "@pagopa/ts-commons/lib/numbers";
 import {
   IResponseErrorNotFound,
   ResponseErrorInternal,
   ResponseErrorNotFound
 } from "@pagopa/ts-commons/lib/responses";
 import { FiscalCode } from "@pagopa/ts-commons/lib/strings";
-import { toError, tryCatch2v } from "fp-ts/lib/Either";
+import { parseJSON, toError } from "fp-ts/lib/Either";
 import { identity } from "fp-ts/lib/function";
 import { none, Option, some } from "fp-ts/lib/Option";
 import {
@@ -19,7 +18,6 @@ import {
 } from "fp-ts/lib/TaskEither";
 import { ContextMiddleware } from "io-functions-commons/dist/src/utils/middlewares/context_middleware";
 import { RequiredBodyPayloadMiddleware } from "io-functions-commons/dist/src/utils/middlewares/required_body_payload";
-import { RequiredParamMiddleware } from "io-functions-commons/dist/src/utils/middlewares/required_param";
 import {
   withRequestMiddlewares,
   wrapRequestHandler
@@ -32,7 +30,6 @@ import {
   ResponseSuccessJson
 } from "italia-ts-commons/lib/responses";
 import { RedisClient } from "redis";
-import { Otp } from "../generated/definitions/Otp";
 import { OtpCode } from "../generated/definitions/OtpCode";
 import { OtpValidationResponse } from "../generated/definitions/OtpValidationResponse";
 import { Timestamp } from "../generated/definitions/Timestamp";
@@ -49,73 +46,66 @@ type ResponseTypes =
 
 type IGetValidateOtpHandler = (
   context: Context,
-  otpCode: OtpCode,
   payload: ValidateOtpPayload
 ) => Promise<ResponseTypes>;
 
-export const OtpPayload = t.interface({
+export const CommonOtpPayload = t.interface({
   expiresAt: Timestamp,
-  fiscalCode: FiscalCode,
-  ttl: NonNegativeInteger
+  fiscalCode: FiscalCode
 });
 
-export type OtpPayload = t.TypeOf<typeof OtpPayload>;
+export type CommonOtpPayload = t.TypeOf<typeof CommonOtpPayload>;
 
 const retrieveOtp = (
   redisClient: RedisClient,
   otpCode: OtpCode
-): TaskEither<Error, Option<Otp>> =>
+): TaskEither<Error, Option<OtpValidationResponse>> =>
   getTask(redisClient, `${OTP_PREFIX}${otpCode}`).chain(maybeOtp =>
     maybeOtp.foldL(
       () => taskEither.of(none),
       otpPayloadString =>
-        fromEither<Error, OtpPayload>(
-          tryCatch2v(() => JSON.parse(otpPayloadString), toError)
+        fromEither(
+          parseJSON(otpPayloadString, toError).chain(_ =>
+            CommonOtpPayload.decode(_).mapLeft(
+              () => new Error("Cannot decode Otp Payload")
+            )
+          )
         ).chain(otpPayload =>
           fromEither(
-            Otp.decode({
-              code: otpCode,
-              expires_at: otpPayload.expiresAt,
-              ttl: otpPayload.ttl
-            }).bimap(() => new Error("Cannot decode Otp Payload"), some)
+            OtpValidationResponse.decode({
+              expires_at: otpPayload.expiresAt
+            }).bimap(() => new Error("Cannot decode Otp"), some)
           )
         )
     )
   );
 
-export function GetValidateOtpHandler(
+export function ValidateOtpHandler(
   redisClient: RedisClient
 ): IGetValidateOtpHandler {
-  return async (_, otpCode, payload) => {
-    return retrieveOtp(redisClient, otpCode)
+  return async (_, payload) =>
+    retrieveOtp(redisClient, payload.otp_code)
       .mapLeft<IResponseErrorInternal | IResponseErrorNotFound>(() =>
         ResponseErrorInternal("Cannot validate OTP Code")
       )
-      .chain(maybeOtp =>
+      .chain<OtpValidationResponse>(maybeOtp =>
         maybeOtp.foldL(
           () =>
-            fromLeft<IResponseErrorNotFound, Otp>(
+            fromLeft(
               ResponseErrorNotFound("Not Found", "OTP Not Found or invalid")
             ),
-          otp => taskEither.of<IResponseErrorNotFound, Otp>(otp)
+          otp => taskEither.of(otp)
         )
       )
-      .map(otp => ({
-        expires_at: otp.expires_at
-      }))
       .fold<ResponseTypes>(identity, ResponseSuccessJson)
       .run();
-  };
 }
 
-export function GetValidateOtp(
-  redisClient: RedisClient
-): express.RequestHandler {
-  const handler = GetValidateOtpHandler(redisClient);
+export function ValidateOtp(redisClient: RedisClient): express.RequestHandler {
+  const handler = ValidateOtpHandler(redisClient);
 
   const middlewaresWrap = withRequestMiddlewares(
     ContextMiddleware(),
-    RequiredParamMiddleware("otpcode", OtpCode),
     RequiredBodyPayloadMiddleware(ValidateOtpPayload)
   );
 
