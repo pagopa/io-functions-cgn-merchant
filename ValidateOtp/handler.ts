@@ -139,7 +139,6 @@ export function ValidateOtpHandler(
                 ).bimap(
                   () => ResponseErrorInternal("Cannot invalidate OTP"),
                   () => ({
-                    ...otpResponseAndFiscalCode.otpResponse,
                     expires_at: new Date()
                   })
                 )
