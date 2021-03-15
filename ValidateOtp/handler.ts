@@ -38,7 +38,18 @@ import { Timestamp } from "../generated/definitions/Timestamp";
 import { ValidateOtpPayload } from "../generated/definitions/ValidateOtpPayload";
 import { deleteTask, getTask } from "../utils/redis_storage";
 
+// This value is used on redis to prefix key value pair of type
+// KEY            | VALUE
+// OTP_${otp_code}| {fiscalCode: "...", expires_at: "...", ttl: "..."}
+// This prefix must be the same used by io-unctions-cgn
+// here https://github.com/pagopa/io-functions-cgn/blob/e2607c695556fecdccce8e969c5da978a641fc61/GenerateOtp/redis.ts#L23
 const OTP_PREFIX = "OTP_";
+
+// This value is used on redis to prefix key value pair of type
+// KEY                          | VALUE
+// OTP_FISCALCODE_${fiscalCode} | otp_code
+// This prefix must be the same used by io-unctions-cgn
+// here https://github.com/pagopa/io-functions-cgn/blob/e2607c695556fecdccce8e969c5da978a641fc61/GenerateOtp/redis.ts#L22
 const OTP_FISCAL_CODE_PREFIX = "OTP_FISCALCODE_";
 
 type ResponseTypes =
