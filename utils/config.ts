@@ -27,7 +27,7 @@ export type IConfig = t.TypeOf<typeof IConfig>;
 export const IConfig = t.intersection([
   t.interface({
     AzureWebJobsStorage: NonEmptyString,
-    CGN_MERCHANT_STORAGE_CONNECTION_STRING: NonEmptyString,
+    CGN_STORAGE_CONNECTION_STRING: NonEmptyString,
 
     isProduction: t.boolean
   }),
