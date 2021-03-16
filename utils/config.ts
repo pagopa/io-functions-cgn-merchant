@@ -26,12 +26,8 @@ export const RedisParams = t.intersection([
 export type IConfig = t.TypeOf<typeof IConfig>;
 export const IConfig = t.intersection([
   t.interface({
-    COSMOSDB_CGN_DATABASE_NAME: NonEmptyString,
-    COSMOSDB_CGN_KEY: NonEmptyString,
-    COSMOSDB_CGN_URI: NonEmptyString,
-
     AzureWebJobsStorage: NonEmptyString,
-    CGN_STORAGE_CONNECTION_STRING: NonEmptyString,
+    CGN_MERCHANT_STORAGE_CONNECTION_STRING: NonEmptyString,
 
     isProduction: t.boolean
   }),
@@ -44,9 +40,9 @@ const errorOrConfig: t.Validation<IConfig> = IConfig.decode({
   REDIS_CLUSTER_ENABLED: fromNullable(process.env.REDIS_CLUSTER_ENABLED)
     .map(_ => _.toLowerCase() === "true")
     .toUndefined(),
-  REDIS_TLS_ENABLED: fromNullable(process.env.REDIS_TLS_ENABLED).map(
-    _ => _.toLowerCase() === "true"
-  ),
+  REDIS_TLS_ENABLED: fromNullable(process.env.REDIS_TLS_ENABLED)
+    .map(_ => _.toLowerCase() === "true")
+    .toUndefined(),
   isProduction: process.env.NODE_ENV === "production"
 });
 
