@@ -136,6 +136,7 @@ export function ValidateOtpHandler(
     const errorLogMapping = mapWithPrivacyLog(
       context,
       logPrefix,
+      // tslint:disable: no-useless-cast
       payload.otp_code.toString() as NonEmptyString
     );
     return retrieveOtp(redisClient, payload.otp_code)
