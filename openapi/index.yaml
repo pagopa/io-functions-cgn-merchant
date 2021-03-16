@@ -15,7 +15,7 @@ basePath: "/api/v1"
 schemes:
   - https
 security:
-  - ApiKey: []
+  - SubscriptionKey: []
 paths:
   "/merchant/cgn/otp/validate":
     post:
@@ -54,9 +54,9 @@ produces:
   - application/json
 
 securityDefinitions:
-  ApiKey:
+  SubscriptionKey:
     type: apiKey
-    name: X-Functions-Key
+    name: Ocp-Apim-Subscription-Key
     in: header
     description: The API key to access this function app.
 
