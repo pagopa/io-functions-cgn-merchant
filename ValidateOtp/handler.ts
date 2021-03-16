@@ -13,7 +13,7 @@ import {
   IResponseSuccessJson,
   ResponseSuccessJson
 } from "@pagopa/ts-commons/lib/responses";
-import { FiscalCode } from "@pagopa/ts-commons/lib/strings";
+import { FiscalCode, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import { parseJSON, toError } from "fp-ts/lib/Either";
 import { identity } from "fp-ts/lib/function";
 import { none, Option, some } from "fp-ts/lib/Option";
@@ -133,9 +133,12 @@ export function ValidateOtpHandler(
   logPrefix: string = "ValidateOtpHandler"
 ): IGetValidateOtpHandler {
   return async (context, payload) => {
-    const otpCode = payload.otp_code;
-    const errorLogMapping = mapWithPrivacyLog(context, logPrefix, otpCode);
-    return retrieveOtp(redisClient, otpCode)
+    const errorLogMapping = mapWithPrivacyLog(
+      context,
+      logPrefix,
+      payload.otp_code.toString() as NonEmptyString
+    );
+    return retrieveOtp(redisClient, payload.otp_code)
       .mapLeft<IResponseErrorInternal | IResponseErrorNotFound>(_ =>
         errorLogMapping(_, ResponseErrorInternal("Cannot validate OTP Code"))
       )
