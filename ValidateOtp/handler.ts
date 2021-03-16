@@ -36,6 +36,7 @@ import { OtpCode } from "../generated/definitions/OtpCode";
 import { OtpValidationResponse } from "../generated/definitions/OtpValidationResponse";
 import { Timestamp } from "../generated/definitions/Timestamp";
 import { ValidateOtpPayload } from "../generated/definitions/ValidateOtpPayload";
+import { mapWithPrivacyLog } from "../utils/logging";
 import { deleteTask, getTask } from "../utils/redis_storage";
 
 // This value is used on redis to prefix key value pair of type
@@ -43,14 +44,14 @@ import { deleteTask, getTask } from "../utils/redis_storage";
 // OTP_${otp_code}| {fiscalCode: "...", expires_at: "...", ttl: "..."}
 // This prefix must be the same used by io-functions-cgn
 // here https://github.com/pagopa/io-functions-cgn/blob/e2607c695556fecdccce8e969c5da978a641fc61/GenerateOtp/redis.ts#L23
-const OTP_PREFIX = "OTP_";
+export const OTP_PREFIX = "OTP_";
 
 // This value is used on redis to prefix key value pair of type
 // KEY                          | VALUE
 // OTP_FISCALCODE_${fiscalCode} | otp_code
 // This prefix must be the same used by io-functions-cgn
 // here https://github.com/pagopa/io-functions-cgn/blob/e2607c695556fecdccce8e969c5da978a641fc61/GenerateOtp/redis.ts#L22
-const OTP_FISCAL_CODE_PREFIX = "OTP_FISCALCODE_";
+export const OTP_FISCAL_CODE_PREFIX = "OTP_FISCALCODE_";
 
 type ResponseTypes =
   | IResponseSuccessJson<OtpValidationResponse>
@@ -128,12 +129,15 @@ const invalidateOtp = (
     .map(() => true);
 
 export function ValidateOtpHandler(
-  redisClient: RedisClient
+  redisClient: RedisClient,
+  logPrefix: string = "ValidateOtpHandler"
 ): IGetValidateOtpHandler {
-  return async (_, payload) =>
-    retrieveOtp(redisClient, payload.otp_code)
-      .mapLeft<IResponseErrorInternal | IResponseErrorNotFound>(() =>
-        ResponseErrorInternal("Cannot validate OTP Code")
+  return async (context, payload) => {
+    const otpCode = payload.otp_code;
+    const errorLogMapping = mapWithPrivacyLog(context, logPrefix, otpCode);
+    return retrieveOtp(redisClient, otpCode)
+      .mapLeft<IResponseErrorInternal | IResponseErrorNotFound>(_ =>
+        errorLogMapping(_, ResponseErrorInternal("Cannot validate OTP Code"))
       )
       .chain<OtpValidationResponse>(maybeOtpResponseAndFiscalCode =>
         maybeOtpResponseAndFiscalCode.foldL(
@@ -148,7 +152,11 @@ export function ValidateOtpHandler(
                   payload.otp_code,
                   otpResponseAndFiscalCode.fiscalCode
                 ).bimap(
-                  () => ResponseErrorInternal("Cannot invalidate OTP"),
+                  _ =>
+                    errorLogMapping(
+                      _,
+                      ResponseErrorInternal("Cannot invalidate OTP")
+                    ),
                   () => ({
                     expires_at: new Date()
                   })
@@ -158,6 +166,7 @@ export function ValidateOtpHandler(
       )
       .fold<ResponseTypes>(identity, ResponseSuccessJson)
       .run();
+  };
 }
 
 export function ValidateOtp(redisClient: RedisClient): express.RequestHandler {
