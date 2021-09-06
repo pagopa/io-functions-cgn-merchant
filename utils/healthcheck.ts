@@ -137,7 +137,7 @@ export const checkApplicationHealth = (): HealthCheck<ProblemSource, true> =>
     TE.of(void 0),
     TE.chain(_ => checkConfigHealth()),
     TE.chainW(config =>
-      // TODO: once we upgrade to fp-ts >= 1.19 we can use Validation to collect all errors, not just the first to happen
+      // TODO: Use Validation to collect all errors, not just the first to happen
       sequenceT(TE.ApplicativePar)(
         checkAzureStorageHealth(config.CGN_STORAGE_CONNECTION_STRING)
       )

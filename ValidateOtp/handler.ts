@@ -21,7 +21,7 @@ import {
 } from "@pagopa/ts-commons/lib/responses";
 import { FiscalCode, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import * as E from "fp-ts/lib/Either";
-import { pipe } from "fp-ts/lib/function";
+import { flow, pipe } from "fp-ts/lib/function";
 import { parse } from "fp-ts/lib/Json";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
@@ -84,34 +84,29 @@ const retrieveOtp = (
     TE.chain(
       O.fold(
         () => TE.of(O.none),
-        otpPayloadString =>
-          pipe(
-            otpPayloadString,
-            parse,
-            E.mapLeft(E.toError),
-            TE.fromEither,
-            TE.chain(_ =>
-              pipe(
-                _,
-                CommonOtpPayload.decode,
-                TE.fromEither,
-                TE.mapLeft(
-                  e =>
-                    new Error(
-                      `Cannot decode Otp Payload [${readableReport(e)}]`
-                    )
-                )
+        flow(
+          parse,
+          E.mapLeft(E.toError),
+          TE.fromEither,
+          TE.chain(
+            flow(
+              CommonOtpPayload.decode,
+              TE.fromEither,
+              TE.mapLeft(
+                e =>
+                  new Error(`Cannot decode Otp Payload [${readableReport(e)}]`)
               )
-            ),
-            TE.map(otpPayload =>
-              O.some({
-                fiscalCode: otpPayload.fiscalCode,
-                otpResponse: {
-                  expires_at: otpPayload.expiresAt
-                }
-              })
             )
+          ),
+          TE.map(otpPayload =>
+            O.some({
+              fiscalCode: otpPayload.fiscalCode,
+              otpResponse: {
+                expires_at: otpPayload.expiresAt
+              }
+            })
           )
+        )
       )
     )
   );
