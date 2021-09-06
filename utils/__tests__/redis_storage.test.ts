@@ -24,8 +24,7 @@ describe("getTask", () => {
           () => fail(),
           value => expect(value).toEqual(aRedisValue)
         )
-      ),
-      TE.toUnion
+      )
     )();
   });
 
@@ -36,8 +35,7 @@ describe("getTask", () => {
       TE.bimap(
         () => fail(),
         maybeResult => expect(O.isNone(maybeResult)).toBeTruthy()
-      ),
-      TE.toUnion
+      )
     )();
   });
 
@@ -50,8 +48,7 @@ describe("getTask", () => {
       TE.bimap(
         _ => expect(_).toBeDefined(),
         () => fail()
-      ),
-      TE.toUnion
+      )
     )();
   });
 });
@@ -63,8 +60,7 @@ describe("deleteTask", () => {
       TE.bimap(
         () => fail(),
         del => expect(del).toBeTruthy()
-      ),
-      TE.toUnion
+      )
     )();
   });
 
@@ -75,8 +71,7 @@ describe("deleteTask", () => {
       TE.bimap(
         () => fail(),
         del => expect(del).toBeFalsy()
-      ),
-      TE.toUnion
+      )
     )();
   });
 
@@ -89,8 +84,7 @@ describe("deleteTask", () => {
       TE.bimap(
         _ => expect(_).toBeDefined(),
         () => fail()
-      ),
-      TE.toUnion
+      )
     )();
   });
 });
