@@ -14,22 +14,17 @@ import {
   ResponseSuccessJson
 } from "@pagopa/ts-commons/lib/responses";
 import { FiscalCode, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
-import { parseJSON, toError } from "fp-ts/lib/Either";
-import { identity } from "fp-ts/lib/function";
-import { none, Option, some } from "fp-ts/lib/Option";
-import {
-  fromEither,
-  fromLeft,
-  fromPredicate,
-  TaskEither,
-  taskEither
-} from "fp-ts/lib/TaskEither";
-import { ContextMiddleware } from "io-functions-commons/dist/src/utils/middlewares/context_middleware";
-import { RequiredBodyPayloadMiddleware } from "io-functions-commons/dist/src/utils/middlewares/required_body_payload";
+import * as E from "fp-ts/lib/Either";
+import { pipe, identity, flow } from "fp-ts/lib/function";
+import * as O from "fp-ts/lib/Option";
+import * as TE from "fp-ts/lib/TaskEither";
+import * as T from "fp-ts/lib/Task";
+import { ContextMiddleware } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/context_middleware";
+import { RequiredBodyPayloadMiddleware } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/required_body_payload";
 import {
   withRequestMiddlewares,
   wrapRequestHandler
-} from "io-functions-commons/dist/src/utils/request_middleware";
+} from "@pagopa/io-functions-commons/dist/src/utils/request_middleware";
 import * as t from "io-ts";
 import { RedisClient } from "redis";
 import { OtpCode } from "../generated/definitions/OtpCode";
@@ -83,25 +78,40 @@ export type OtpResponseAndFiscalCode = t.TypeOf<
 const retrieveOtp = (
   redisClient: RedisClient,
   otpCode: OtpCode
-): TaskEither<Error, Option<OtpResponseAndFiscalCode>> =>
-  getTask(redisClient, `${OTP_PREFIX}${otpCode}`).chain(maybeOtp =>
-    maybeOtp.foldL(
-      () => taskEither.of(none),
-      otpPayloadString =>
-        fromEither(
-          parseJSON(otpPayloadString, toError).chain(_ =>
-            CommonOtpPayload.decode(_).mapLeft(
-              e => new Error(`Cannot decode Otp Payload [${readableReport(e)}]`)
+): TE.TaskEither<Error, O.Option<OtpResponseAndFiscalCode>> =>
+  pipe(
+    getTask(redisClient, `${OTP_PREFIX}${otpCode}`),
+    TE.chain(
+      O.fold(
+        () => TE.of(O.none),
+        otpPayloadString =>
+          pipe(
+            TE.fromEither(
+              pipe(
+                E.parseJSON(otpPayloadString, E.toError),
+                E.chain(
+                  flow(
+                    CommonOtpPayload.decode,
+                    E.mapLeft(
+                      e =>
+                        new Error(
+                          `Cannot decode Otp Payload [${readableReport(e)}]`
+                        )
+                    )
+                  )
+                )
+              )
+            ),
+            TE.map(otpPayload =>
+              O.some({
+                fiscalCode: otpPayload.fiscalCode,
+                otpResponse: {
+                  expires_at: otpPayload.expiresAt
+                }
+              })
             )
           )
-        ).map(otpPayload =>
-          some({
-            fiscalCode: otpPayload.fiscalCode,
-            otpResponse: {
-              expires_at: otpPayload.expiresAt
-            }
-          })
-        )
+      )
     )
   );
 
@@ -109,24 +119,26 @@ const invalidateOtp = (
   redisClient: RedisClient,
   otpCode: OtpCode,
   fiscalCode: FiscalCode
-): TaskEither<Error, true> =>
-  deleteTask(redisClient, `${OTP_PREFIX}${otpCode}`)
-    .chain(
-      fromPredicate(
-        result => result,
+): TE.TaskEither<Error, true> =>
+  pipe(
+    deleteTask(redisClient, `${OTP_PREFIX}${otpCode}`),
+    TE.chain(
+      TE.fromPredicate(
+        identity,
         () => new Error("Unexpected delete OTP operation")
       )
-    )
-    .chain(() =>
+    ),
+    TE.chain(() =>
       deleteTask(redisClient, `${OTP_FISCAL_CODE_PREFIX}${fiscalCode}`)
-    )
-    .chain(
-      fromPredicate(
-        result => result,
+    ),
+    TE.chain(
+      TE.fromPredicate(
+        identity,
         () => new Error("Unexpected delete fiscalCode operation")
       )
-    )
-    .map(() => true);
+    ),
+    TE.map(() => true)
+  );
 
 export function ValidateOtpHandler(
   redisClient: RedisClient,
@@ -139,37 +151,58 @@ export function ValidateOtpHandler(
       // tslint:disable: no-useless-cast
       payload.otp_code.toString() as NonEmptyString
     );
-    return retrieveOtp(redisClient, payload.otp_code)
-      .mapLeft<IResponseErrorInternal | IResponseErrorNotFound>(_ =>
-        errorLogMapping(_, ResponseErrorInternal("Cannot validate OTP Code"))
-      )
-      .chain<OtpValidationResponse>(maybeOtpResponseAndFiscalCode =>
-        maybeOtpResponseAndFiscalCode.foldL(
-          () =>
-            fromLeft(
-              ResponseErrorNotFound("Not Found", "OTP Not Found or invalid")
-            ),
-          otpResponseAndFiscalCode =>
-            payload.invalidate_otp
-              ? invalidateOtp(
-                  redisClient,
-                  payload.otp_code,
-                  otpResponseAndFiscalCode.fiscalCode
-                ).bimap(
-                  _ =>
-                    errorLogMapping(
-                      _,
-                      ResponseErrorInternal("Cannot invalidate OTP")
+
+    const result = pipe(
+      retrieveOtp(redisClient, payload.otp_code),
+      TE.mapLeft(e =>
+        errorLogMapping(e, ResponseErrorInternal("Cannot validate OTP Code"))
+      ),
+      TE.chain<
+        IResponseErrorInternal | IResponseErrorNotFound,
+        O.Option<OtpResponseAndFiscalCode>,
+        OtpValidationResponse
+      >(
+        flow(
+          O.fold(
+            () =>
+              TE.left(
+                ResponseErrorNotFound("Not Found", "OTP Not Found or invalid")
+              ),
+            otpResponseAndFiscalCode =>
+              payload.invalidate_otp
+                ? pipe(
+                    invalidateOtp(
+                      redisClient,
+                      payload.otp_code,
+                      otpResponseAndFiscalCode.fiscalCode
                     ),
-                  () => ({
-                    expires_at: new Date()
-                  })
-                )
-              : taskEither.of(otpResponseAndFiscalCode.otpResponse)
+                    TE.bimap(
+                      e =>
+                        errorLogMapping(
+                          e,
+                          ResponseErrorInternal("Cannot invalidate OTP")
+                        ),
+                      () => ({
+                        expires_at: new Date()
+                      })
+                    )
+                  )
+                : TE.of(otpResponseAndFiscalCode.otpResponse)
+          )
         )
+      ),
+      TE.foldW<
+        IResponseErrorInternal | IResponseErrorNotFound,
+        ResponseTypes,
+        OtpValidationResponse,
+        ResponseTypes
+      >(
+        e => T.of(e),
+        s => T.of(ResponseSuccessJson(s))
       )
-      .fold<ResponseTypes>(identity, ResponseSuccessJson)
-      .run();
+    )();
+
+    return result;
   };
 }
 

@@ -62,9 +62,9 @@ securityDefinitions:
 
 definitions:
   Timestamp:
-    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v17.3.0/openapi/definitions.yaml#/Timestamp"
+    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v22.3.0/openapi/definitions.yaml#/Timestamp"
   ProblemJson:
-    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v17.3.0/openapi/definitions.yaml#/ProblemJson"
+    $ref: "https://raw.githubusercontent.com/pagopa/io-functions-commons/v22.3.0/openapi/definitions.yaml#/ProblemJson"
   OtpCode:
     $ref: "https://raw.githubusercontent.com/pagopa/io-functions-cgn/v0.2.1/openapi/index.yaml#/definitions/OtpCode"
   Otp:
