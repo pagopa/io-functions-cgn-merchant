@@ -13,16 +13,16 @@ export const RetryOptions = jest.fn(() => ({}));
 export const context = ({
   bindings: {},
   log: {
-    // tslint:disable-next-line: no-console
+    // eslint-disable-next-line no-console
     error: jest.fn().mockImplementation(console.log),
-    // tslint:disable-next-line: no-console
+    // eslint-disable-next-line no-console
     info: jest.fn().mockImplementation(console.log),
-    // tslint:disable-next-line: no-console
+    // eslint-disable-next-line no-console
     verbose: jest.fn().mockImplementation(console.log),
-    // tslint:disable-next-line: no-console
+    // eslint-disable-next-line no-console
     warn: jest.fn().mockImplementation(console.log)
   },
-  // tslint:disable-next-line: object-literal-sort-keys
+  // eslint-disable-next-line sort-keys
   executionContext: {
     invocationId: "123456"
   }

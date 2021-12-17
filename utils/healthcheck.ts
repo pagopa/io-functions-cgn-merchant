@@ -20,7 +20,10 @@ import fetch from "node-fetch";
 import { getConfig, IConfig } from "./config";
 
 type ProblemSource = "AzureCosmosDB" | "AzureStorage" | "Config" | "Url";
-export type HealthProblem<S extends ProblemSource> = string & { __source: S };
+export type HealthProblem<S extends ProblemSource> = string & {
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  readonly __source: S;
+};
 export type HealthCheck<
   S extends ProblemSource = ProblemSource,
   True = true
@@ -58,7 +61,10 @@ export const checkConfigHealth = (): HealthCheck<"Config", IConfig> =>
 /**
  * Return a CosmosClient
  */
-export const buildCosmosClient = (dbUri: string, dbKey?: string) =>
+export const buildCosmosClient = (
+  dbUri: string,
+  dbKey?: string
+): CosmosClient =>
   new CosmosClient({
     endpoint: dbUri,
     key: dbKey
@@ -115,6 +121,7 @@ export const checkAzureStorageHealth = (
               azurestorageCommon.models.ServicePropertiesResult.ServiceProperties
             >((resolve, reject) =>
               createService(connStr).getServiceProperties((err, result) => {
+                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
                 err
                   ? reject(err.message.replace(/\n/gim, " ")) // avoid newlines
                   : resolve(result);

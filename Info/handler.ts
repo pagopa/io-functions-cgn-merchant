@@ -7,38 +7,40 @@ import {
 import * as express from "express";
 import { wrapRequestHandler } from "@pagopa/io-functions-commons/dist/src/utils/request_middleware";
 
-import * as packageJson from "../package.json";
-import { checkApplicationHealth, HealthCheck } from "../utils/healthcheck";
 import { pipe } from "fp-ts/lib/function";
 import * as TE from "fp-ts/lib/TaskEither";
+import * as packageJson from "../package.json";
+import { checkApplicationHealth, HealthCheck } from "../utils/healthcheck";
 
 interface IInfo {
-  name: string;
-  version: string;
+  readonly name: string;
+  readonly version: string;
 }
 
 type InfoHandler = () => Promise<
   IResponseSuccessJson<IInfo> | IResponseErrorInternal
 >;
 
-export function InfoHandler(healthCheck: HealthCheck): InfoHandler {
-  return () =>
-    pipe(
-      healthCheck,
-      TE.bimap(
-        problems => ResponseErrorInternal(problems.join("\n\n")),
-        _ =>
-          ResponseSuccessJson({
-            name: packageJson.name,
-            version: packageJson.version
-          })
-      ),
-      TE.toUnion
-    )();
-}
+export const InfoHandler = (
+  healthCheck: HealthCheck
+): InfoHandler => (): Promise<
+  IResponseSuccessJson<IInfo> | IResponseErrorInternal
+> =>
+  pipe(
+    healthCheck,
+    TE.bimap(
+      problems => ResponseErrorInternal(problems.join("\n\n")),
+      _ =>
+        ResponseSuccessJson({
+          name: packageJson.name,
+          version: packageJson.version
+        })
+    ),
+    TE.toUnion
+  )();
 
-export function Info(): express.RequestHandler {
+export const Info = (): express.RequestHandler => {
   const handler = InfoHandler(checkApplicationHealth());
 
   return wrapRequestHandler(handler);
-}
+};
