@@ -14,10 +14,10 @@ export const singleStringReply = (
   reply: "OK" | undefined
 ): E.Either<Error, boolean> => {
   if (err) {
-    return E.left<Error, boolean>(err);
+    return E.left(err);
   }
 
-  return E.right<Error, boolean>(reply === "OK");
+  return E.right(reply === "OK");
 };
 
 /**
@@ -30,9 +30,9 @@ export const singleValueReply = (
   reply: string | null
 ): E.Either<Error, O.Option<string>> => {
   if (err) {
-    return E.left<Error, O.Option<string>>(err);
+    return E.left(err);
   }
-  return E.right<Error, O.Option<string>>(O.fromNullable(reply));
+  return E.right(O.fromNullable(reply));
 };
 
 /**
@@ -46,12 +46,12 @@ export const integerRepl = (
   expectedReply?: number
 ): E.Either<Error, boolean> => {
   if (err) {
-    return E.left<Error, boolean>(err);
+    return E.left(err);
   }
   if (expectedReply !== undefined && expectedReply !== reply) {
-    return E.right<Error, boolean>(false);
+    return E.right(false);
   }
-  return E.right<Error, boolean>(typeof reply === "number");
+  return E.right(typeof reply === "number");
 };
 
 export const falsyResponseToError = (

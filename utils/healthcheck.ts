@@ -49,7 +49,8 @@ const toHealthProblems = <S extends ProblemSource>(source: S) => (
  */
 export const checkConfigHealth = (): HealthCheck<"Config", IConfig> =>
   pipe(
-    TE.fromEither(getConfig()),
+    getConfig(),
+    TE.fromEither,
     TE.mapLeft(errors =>
       errors.map(e =>
         // give each problem its own line
@@ -99,42 +100,36 @@ export const checkAzureCosmosDbHealth = (
  */
 export const checkAzureStorageHealth = (
   connStr: string
-): HealthCheck<"AzureStorage"> => {
-  const applicativeValidation = TE.getApplicativeTaskValidation(
-    T.ApplicativePar,
-    RA.getSemigroup<HealthProblem<"AzureStorage">>()
-  );
-
-  // try to instantiate a client for each product of azure storage
-  return pipe(
-    [
-      createBlobService,
-      createFileService,
-      createQueueService,
-      createTableService
-    ]
-      // for each, create a task that wraps getServiceProperties
-      .map(createService =>
-        TE.tryCatch(
-          () =>
-            new Promise<
-              azurestorageCommon.models.ServicePropertiesResult.ServiceProperties
-            >((resolve, reject) =>
-              createService(connStr).getServiceProperties((err, result) => {
-                // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                err
-                  ? reject(err.message.replace(/\n/gim, " ")) // avoid newlines
-                  : resolve(result);
-              })
-            ),
-          toHealthProblems("AzureStorage")
+): HealthCheck<"AzureStorage"> =>
+  pipe(
+    A.sequence(TE.ApplicativePar)(
+      // try to instantiate a client for each product of azure storage
+      [
+        createBlobService,
+        createFileService,
+        createQueueService,
+        createTableService
+      ]
+        // for each, create a task that wraps getServiceProperties
+        .map(createService =>
+          TE.tryCatch(
+            () =>
+              new Promise<
+                azurestorageCommon.models.ServicePropertiesResult.ServiceProperties
+              >((resolve, reject) =>
+                createService(connStr).getServiceProperties((err, result) => {
+                  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                  err
+                    ? reject(err.message.replace(/\n/gim, " ")) // avoid newlines
+                    : resolve(result);
+                })
+              ),
+            toHealthProblems("AzureStorage")
+          )
         )
-      ),
-    // run each taskEither and gather validation errors from each one of them, if any
-    A.sequence(applicativeValidation),
+    ),
     TE.map(_ => true)
   );
-};
 
 /**
  * Check a url is reachable

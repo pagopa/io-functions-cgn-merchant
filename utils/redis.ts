@@ -49,9 +49,9 @@ const createClusterRedisClient = (
 
 export const REDIS_CLIENT = pipe(
   config.isProduction,
-  O.fromPredicate<boolean>(identity),
+  O.fromPredicate(identity),
   O.chainNullableK(_ => config.REDIS_CLUSTER_ENABLED),
-  O.chain(O.fromPredicate<boolean>(identity)),
+  O.chain(O.fromPredicate(identity)),
   O.map(() =>
     createClusterRedisClient(
       config.REDIS_URL,

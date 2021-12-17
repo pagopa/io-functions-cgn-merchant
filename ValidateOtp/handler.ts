@@ -2,6 +2,12 @@
 import * as express from "express";
 
 import { Context } from "@azure/functions";
+import { ContextMiddleware } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/context_middleware";
+import { RequiredBodyPayloadMiddleware } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/required_body_payload";
+import {
+  withRequestMiddlewares,
+  wrapRequestHandler
+} from "@pagopa/io-functions-commons/dist/src/utils/request_middleware";
 import { readableReport } from "@pagopa/ts-commons/lib/reporters";
 import {
   IResponseErrorNotFound,
@@ -16,16 +22,10 @@ import {
 } from "@pagopa/ts-commons/lib/responses";
 import { FiscalCode, NonEmptyString } from "@pagopa/ts-commons/lib/strings";
 import * as E from "fp-ts/lib/Either";
-import { pipe, identity, flow } from "fp-ts/lib/function";
+import { flow, pipe } from "fp-ts/lib/function";
+import { parse } from "fp-ts/lib/Json";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
-import * as T from "fp-ts/lib/Task";
-import { ContextMiddleware } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/context_middleware";
-import { RequiredBodyPayloadMiddleware } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/required_body_payload";
-import {
-  withRequestMiddlewares,
-  wrapRequestHandler
-} from "@pagopa/io-functions-commons/dist/src/utils/request_middleware";
 import * as t from "io-ts";
 import { RedisClient } from "redis";
 import { OtpCode } from "../generated/definitions/OtpCode";
@@ -85,33 +85,29 @@ const retrieveOtp = (
     TE.chain(
       O.fold(
         () => TE.of(O.none),
-        otpPayloadString =>
-          pipe(
-            TE.fromEither(
-              pipe(
-                E.parseJSON(otpPayloadString, E.toError),
-                E.chain(
-                  flow(
-                    CommonOtpPayload.decode,
-                    E.mapLeft(
-                      e =>
-                        new Error(
-                          `Cannot decode Otp Payload [${readableReport(e)}]`
-                        )
-                    )
-                  )
-                )
+        flow(
+          parse,
+          E.mapLeft(E.toError),
+          TE.fromEither,
+          TE.chain(
+            flow(
+              CommonOtpPayload.decode,
+              TE.fromEither,
+              TE.mapLeft(
+                e =>
+                  new Error(`Cannot decode Otp Payload [${readableReport(e)}]`)
               )
-            ),
-            TE.map(otpPayload =>
-              O.some({
-                fiscalCode: otpPayload.fiscalCode,
-                otpResponse: {
-                  expires_at: otpPayload.expiresAt
-                }
-              })
             )
+          ),
+          TE.map(otpPayload =>
+            O.some({
+              fiscalCode: otpPayload.fiscalCode,
+              otpResponse: {
+                expires_at: otpPayload.expiresAt
+              }
+            })
           )
+        )
       )
     )
   );
@@ -125,7 +121,7 @@ const invalidateOtp = (
     deleteTask(redisClient, `${OTP_PREFIX}${otpCode}`),
     TE.chain(
       TE.fromPredicate(
-        identity,
+        result => result,
         () => new Error("Unexpected delete OTP operation")
       )
     ),
@@ -134,7 +130,7 @@ const invalidateOtp = (
     ),
     TE.chain(
       TE.fromPredicate(
-        identity,
+        result => result,
         () => new Error("Unexpected delete fiscalCode operation")
       )
     ),
@@ -151,58 +147,43 @@ export const ValidateOtpHandler = (
   const errorLogMapping = mapWithPrivacyLog(
     context,
     logPrefix,
-    // eslint-disable @typescript-eslint/no-unnecessary-type-assertion
     payload.otp_code.toString() as NonEmptyString
   );
-
   return pipe(
     retrieveOtp(redisClient, payload.otp_code),
-    TE.mapLeft(e =>
-      errorLogMapping(e, ResponseErrorInternal("Cannot validate OTP Code"))
+    TE.mapLeft(_ =>
+      errorLogMapping(_, ResponseErrorInternal("Cannot validate OTP Code"))
     ),
-    TE.chain<
-      IResponseErrorInternal | IResponseErrorNotFound,
-      O.Option<OtpResponseAndFiscalCode>,
-      OtpValidationResponse
-    >(
-      flow(
-        O.fold(
-          () =>
-            TE.left(
-              ResponseErrorNotFound("Not Found", "OTP Not Found or invalid")
-            ),
-          otpResponseAndFiscalCode =>
-            payload.invalidate_otp
-              ? pipe(
-                  invalidateOtp(
-                    redisClient,
-                    payload.otp_code,
-                    otpResponseAndFiscalCode.fiscalCode
-                  ),
-                  TE.bimap(
-                    e =>
-                      errorLogMapping(
-                        e,
-                        ResponseErrorInternal("Cannot invalidate OTP")
-                      ),
-                    () => ({
-                      expires_at: new Date()
-                    })
-                  )
+    TE.chain(
+      O.fold(
+        () =>
+          TE.left<IResponseErrorNotFound | IResponseErrorInternal>(
+            ResponseErrorNotFound("Not Found", "OTP Not Found or invalid")
+          ),
+        otpResponseAndFiscalCode =>
+          payload.invalidate_otp
+            ? pipe(
+                invalidateOtp(
+                  redisClient,
+                  payload.otp_code,
+                  otpResponseAndFiscalCode.fiscalCode
+                ),
+                TE.bimap(
+                  _ =>
+                    errorLogMapping(
+                      _,
+                      ResponseErrorInternal("Cannot invalidate OTP")
+                    ),
+                  () => ({
+                    expires_at: new Date()
+                  })
                 )
-              : TE.of(otpResponseAndFiscalCode.otpResponse)
-        )
+              )
+            : TE.of(otpResponseAndFiscalCode.otpResponse)
       )
     ),
-    TE.foldW<
-      IResponseErrorInternal | IResponseErrorNotFound,
-      ResponseTypes,
-      OtpValidationResponse,
-      ResponseTypes
-    >(
-      e => T.of(e),
-      s => T.of(ResponseSuccessJson(s))
-    )
+    TE.map(ResponseSuccessJson),
+    TE.toUnion
   )();
 };
 

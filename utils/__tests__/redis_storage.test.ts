@@ -21,14 +21,10 @@ describe("getTask", () => {
       getTask(redisClientMock as any, aRedisKey),
       TE.bimap(
         () => fail(),
-        maybeResult =>
-          pipe(
-            maybeResult,
-            O.fold(
-              () => fail(),
-              value => expect(value).toEqual(aRedisValue)
-            )
-          )
+        O.fold(
+          () => fail(),
+          value => expect(value).toEqual(aRedisValue)
+        )
       )
     )();
   });

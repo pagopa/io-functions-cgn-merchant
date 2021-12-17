@@ -1,12 +1,10 @@
 import * as express from "express";
 import * as winston from "winston";
-
 import { Context } from "@azure/functions";
 import { secureExpressApp } from "@pagopa/io-functions-commons/dist/src/utils/express";
 import { AzureContextTransport } from "@pagopa/io-functions-commons/dist/src/utils/logging";
 import { setAppContext } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/context_middleware";
-import createAzureFunctionHandler from "io-functions-express/dist/src/createAzureFunctionsHandler";
-
+import createAzureFunctionHandler from "@pagopa/express-azure-functions/dist/src/createAzureFunctionsHandler";
 import { REDIS_CLIENT } from "../utils/redis";
 import { ValidateOtp } from "./handler";
 
