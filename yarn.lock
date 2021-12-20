@@ -2477,10 +2477,10 @@ cssstyle@^1.0.0:
   dependencies:
     cssom "0.3.x"
 
-danger-plugin-digitalcitizenship@*:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/danger-plugin-digitalcitizenship/-/danger-plugin-digitalcitizenship-1.0.0.tgz#8a501a42d010e8a7221a4b3e66033f428fbcd78b"
-  integrity sha512-gStrQcFlvKK/kftoFNlqgFlvWFNHoglPNDAvphNlq/DPu2MI2vexPQWsbHl1E61Gc0MriIvwzfaVJBkCOtQphA==
+danger-plugin-digitalcitizenship@^0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/danger-plugin-digitalcitizenship/-/danger-plugin-digitalcitizenship-0.3.1.tgz#ed941ee5905788bb9f1f61f171029d76c985b995"
+  integrity sha512-AxaWGdLzm+GN7Q385ICCTxgj15JVIiFnpw03v1FcsCmDF1trnFhZfJzjESAJVi510p0C+bchJe9yX4SdsiUPXA==
   dependencies:
     danger-plugin-yarn "^1.2.1"
     pivotaljs "^1.0.3"
