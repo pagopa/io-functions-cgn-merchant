@@ -1,16 +1,17 @@
-import { pipe } from "fp-ts/lib/function";
+import { identity, pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as redis from "redis";
 import RedisClustr = require("redis-clustr");
 import { getConfigOrThrow } from "./config";
+
 const config = getConfigOrThrow();
 
-function createSimpleRedisClient(
+const createSimpleRedisClient = (
   redisUrl: string,
   password?: string,
   port?: string,
   useTls: boolean = true
-): redis.RedisClient {
+): redis.RedisClient => {
   const DEFAULT_REDIS_PORT = "6379";
 
   const redisPort: number = parseInt(port || DEFAULT_REDIS_PORT, 10);
@@ -20,13 +21,13 @@ function createSimpleRedisClient(
     port: redisPort,
     tls: useTls ? { servername: redisUrl } : undefined
   });
-}
+};
 
-function createClusterRedisClient(
+const createClusterRedisClient = (
   redisUrl: string,
   password?: string,
   port?: string
-): redis.RedisClient {
+): redis.RedisClient => {
   const DEFAULT_REDIS_PORT = "6379";
 
   const redisPort: number = parseInt(port || DEFAULT_REDIS_PORT, 10);
@@ -44,13 +45,13 @@ function createClusterRedisClient(
       }
     ]
   }) as redis.RedisClient; // Casting RedisClustr with missing typings to RedisClient (same usage).
-}
+};
 
 export const REDIS_CLIENT = pipe(
   config.isProduction,
-  O.fromPredicate<boolean>(_ => _),
+  O.fromPredicate(identity),
   O.chainNullableK(_ => config.REDIS_CLUSTER_ENABLED),
-  O.chain(O.fromPredicate(_ => _)),
+  O.chain(O.fromPredicate(identity)),
   O.map(() =>
     createClusterRedisClient(
       config.REDIS_URL,

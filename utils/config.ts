@@ -7,9 +7,9 @@
 
 import { readableReport } from "@pagopa/ts-commons/lib/reporters";
 import { NonEmptyString } from "@pagopa/ts-commons/lib/strings";
+import * as O from "fp-ts/lib/Option";
 import * as E from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/function";
-import * as O from "fp-ts/lib/Option";
 import * as t from "io-ts";
 
 export const RedisParams = t.intersection([
@@ -30,7 +30,6 @@ export const IConfig = t.intersection([
   t.interface({
     AzureWebJobsStorage: NonEmptyString,
     CGN_STORAGE_CONNECTION_STRING: NonEmptyString,
-
     isProduction: t.boolean
   }),
   RedisParams
@@ -42,13 +41,13 @@ const errorOrConfig: t.Validation<IConfig> = IConfig.decode({
   REDIS_CLUSTER_ENABLED: pipe(
     process.env.REDIS_CLUSTER_ENABLED,
     O.fromNullable,
-    O.map(_ => _.toLowerCase() === "true"),
+    O.map(v => v.toLowerCase() === "true"),
     O.toUndefined
   ),
   REDIS_TLS_ENABLED: pipe(
     process.env.REDIS_TLS_ENABLED,
     O.fromNullable,
-    O.map(_ => _.toLowerCase() === "true"),
+    O.map(v => v.toLowerCase() === "true"),
     O.toUndefined
   ),
   isProduction: process.env.NODE_ENV === "production"
@@ -60,9 +59,7 @@ const errorOrConfig: t.Validation<IConfig> = IConfig.decode({
  *
  * @returns either the configuration values or a list of validation errors
  */
-export function getConfig(): t.Validation<IConfig> {
-  return errorOrConfig;
-}
+export const getConfig = (): t.Validation<IConfig> => errorOrConfig;
 
 /**
  * Read the application configuration and check for invalid values.
@@ -71,11 +68,10 @@ export function getConfig(): t.Validation<IConfig> {
  * @returns the configuration values
  * @throws validation errors found while parsing the application configuration
  */
-export function getConfigOrThrow(): IConfig {
-  return pipe(
+export const getConfigOrThrow = (): IConfig =>
+  pipe(
     errorOrConfig,
-    E.getOrElseW(errors => {
+    E.getOrElse<t.Errors, IConfig>(errors => {
       throw new Error(`Invalid configuration: ${readableReport(errors)}`);
     })
   );
-}

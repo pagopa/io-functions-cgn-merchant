@@ -1,3 +1,4 @@
+/* eslint-disable extra-rules/no-commented-out-code */
 import * as express from "express";
 
 import { Context } from "@azure/functions";
@@ -136,57 +137,59 @@ const invalidateOtp = (
     TE.map(() => true)
   );
 
-export function ValidateOtpHandler(
+export const ValidateOtpHandler = (
   redisClient: RedisClient,
   logPrefix: string = "ValidateOtpHandler"
-): IGetValidateOtpHandler {
-  return async (context, payload) => {
-    const errorLogMapping = mapWithPrivacyLog(
-      context,
-      logPrefix,
-      // tslint:disable: no-useless-cast
-      payload.otp_code.toString() as NonEmptyString
-    );
-    return pipe(
-      retrieveOtp(redisClient, payload.otp_code),
-      TE.mapLeft(_ =>
-        errorLogMapping(_, ResponseErrorInternal("Cannot validate OTP Code"))
-      ),
-      TE.chain(
-        O.fold(
-          () =>
-            TE.left<IResponseErrorNotFound | IResponseErrorInternal>(
-              ResponseErrorNotFound("Not Found", "OTP Not Found or invalid")
-            ),
-          otpResponseAndFiscalCode =>
-            payload.invalidate_otp
-              ? pipe(
-                  invalidateOtp(
-                    redisClient,
-                    payload.otp_code,
-                    otpResponseAndFiscalCode.fiscalCode
-                  ),
-                  TE.bimap(
-                    _ =>
-                      errorLogMapping(
-                        _,
-                        ResponseErrorInternal("Cannot invalidate OTP")
-                      ),
-                    () => ({
-                      expires_at: new Date()
-                    })
-                  )
+): IGetValidateOtpHandler => async (
+  context,
+  payload
+): Promise<ResponseTypes> => {
+  const errorLogMapping = mapWithPrivacyLog(
+    context,
+    logPrefix,
+    payload.otp_code.toString() as NonEmptyString
+  );
+  return pipe(
+    retrieveOtp(redisClient, payload.otp_code),
+    TE.mapLeft(_ =>
+      errorLogMapping(_, ResponseErrorInternal("Cannot validate OTP Code"))
+    ),
+    TE.chain(
+      O.fold(
+        () =>
+          TE.left<IResponseErrorNotFound | IResponseErrorInternal>(
+            ResponseErrorNotFound("Not Found", "OTP Not Found or invalid")
+          ),
+        otpResponseAndFiscalCode =>
+          payload.invalidate_otp
+            ? pipe(
+                invalidateOtp(
+                  redisClient,
+                  payload.otp_code,
+                  otpResponseAndFiscalCode.fiscalCode
+                ),
+                TE.bimap(
+                  _ =>
+                    errorLogMapping(
+                      _,
+                      ResponseErrorInternal("Cannot invalidate OTP")
+                    ),
+                  () => ({
+                    expires_at: new Date()
+                  })
                 )
-              : TE.of(otpResponseAndFiscalCode.otpResponse)
-        )
-      ),
-      TE.map(ResponseSuccessJson),
-      TE.toUnion
-    )();
-  };
-}
+              )
+            : TE.of(otpResponseAndFiscalCode.otpResponse)
+      )
+    ),
+    TE.map(ResponseSuccessJson),
+    TE.toUnion
+  )();
+};
 
-export function ValidateOtp(redisClient: RedisClient): express.RequestHandler {
+export const ValidateOtp = (
+  redisClient: RedisClient
+): express.RequestHandler => {
   const handler = ValidateOtpHandler(redisClient);
 
   const middlewaresWrap = withRequestMiddlewares(
@@ -195,4 +198,4 @@ export function ValidateOtp(redisClient: RedisClient): express.RequestHandler {
   );
 
   return wrapRequestHandler(middlewaresWrap(handler));
-}
+};

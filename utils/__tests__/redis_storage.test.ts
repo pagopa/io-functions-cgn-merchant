@@ -1,4 +1,5 @@
-// tslint:disable: no-any
+// eslint-disable @typescript-eslint/no-explicit-any
+
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
@@ -47,7 +48,7 @@ describe("getTask", () => {
       getTask(redisClientMock as any, aRedisKey),
       TE.bimap(
         _ => expect(_).toBeDefined(),
-        () => fail()
+        _ => fail()
       )
     )();
   });
