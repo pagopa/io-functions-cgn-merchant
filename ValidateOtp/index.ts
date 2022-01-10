@@ -20,7 +20,7 @@ const app = express();
 secureExpressApp(app);
 
 // Add express route
-app.post("/otp/validate", ValidateOtp(REDIS_CLIENT));
+app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(REDIS_CLIENT));
 
 const azureFunctionHandler = createAzureFunctionHandler(app);
 
