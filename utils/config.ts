@@ -11,6 +11,7 @@ import * as O from "fp-ts/lib/Option";
 import * as E from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as t from "io-ts";
+import { NonNegativeInteger } from "@pagopa/ts-commons/lib/numbers";
 
 export const RedisParams = t.intersection([
   t.interface({
@@ -30,6 +31,7 @@ export const IConfig = t.intersection([
   t.interface({
     AzureWebJobsStorage: NonEmptyString,
     CGN_STORAGE_CONNECTION_STRING: NonEmptyString,
+    OTP_TTL_IN_SECONDS: NonNegativeInteger,
     isProduction: t.boolean
   }),
   RedisParams

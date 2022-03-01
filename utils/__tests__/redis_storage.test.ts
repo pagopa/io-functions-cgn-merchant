@@ -1,5 +1,3 @@
-// eslint-disable @typescript-eslint/no-explicit-any
-
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
@@ -18,6 +16,7 @@ const redisClientMock = {
 describe("getTask", () => {
   it("should return a value if redis get key-value pair correctly", async () => {
     await pipe(
+      // tslint:disable-next-line: no-any
       getTask(redisClientMock as any, aRedisKey),
       TE.bimap(
         () => fail(),
