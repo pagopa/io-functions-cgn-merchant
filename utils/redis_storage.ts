@@ -101,3 +101,39 @@ export const deleteTask = (
     ),
     TE.chain(TE.fromEither)
   );
+
+export const setWithExpirationTask = (
+  redisClient: RedisClient,
+  key: string,
+  value: string,
+  expirationInSeconds: number,
+  errorMsg?: string
+): TE.TaskEither<Error, true> =>
+  pipe(
+    TE.tryCatch(
+      () =>
+        new Promise<E.Either<Error, true>>(resolve =>
+          // Set key to hold the string value. If key already holds a value, it is overwritten, regardless of its type.
+          // @see https://redis.io/commands/set
+          redisClient.set(
+            key,
+            value,
+            "EX",
+            expirationInSeconds,
+            (err, response) =>
+              resolve(
+                falsyResponseToError(
+                  singleStringReply(err, response),
+                  new Error(
+                    errorMsg
+                      ? errorMsg
+                      : "Error setting key value pair on redis"
+                  )
+                )
+              )
+          )
+        ),
+      E.toError
+    ),
+    TE.chain(TE.fromEither)
+  );

@@ -17,6 +17,26 @@ schemes:
 security:
   - SubscriptionKey: []
 paths:
+  "/otp":
+    post:
+      operationId: generateOtp
+      summary: |
+        Generate a new Otp
+      description: |
+        Generate a new Otp used to perform integration tests
+      responses:
+        "200":
+            description: Otp generated.
+            schema:
+              $ref: "#/definitions/Otp"
+        "401":
+          description: Wrong or missing function key.
+        "403":
+          description: Forbidden.
+        "500":
+          description: Service unavailable.
+          schema:
+            $ref: "#/definitions/ProblemJson"
   "/otp/validate":
     post:
       operationId: validateOtp
