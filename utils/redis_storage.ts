@@ -1,8 +1,8 @@
-import * as E from "fp-ts/lib/Either";
 import { pipe } from "fp-ts/lib/function";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
-import { RedisClient } from "redis";
+import * as E from "fp-ts/lib/Either";
+import { RedisClient } from "./redis";
 
 /**
  * Parse a Redis single string reply.
@@ -16,9 +16,16 @@ export const singleStringReply = (
   if (err) {
     return E.left(err);
   }
-
   return E.right(reply === "OK");
 };
+
+export const singleStringReplyAsync = (
+  command: TE.TaskEither<Error, string | null>
+): TE.TaskEither<Error, boolean> =>
+  pipe(
+    command,
+    TE.map(reply => reply === "OK")
+  );
 
 /**
  * Parse a Redis single string reply.
@@ -34,6 +41,11 @@ export const singleValueReply = (
   }
   return E.right(O.fromNullable(reply));
 };
+
+export const singleValueReplyAsync = (
+  command: TE.TaskEither<Error, string | null>
+): TE.TaskEither<Error, O.Option<string>> =>
+  pipe(command, TE.map(O.fromNullable));
 
 /**
  * Parse a Redis integer reply.
@@ -54,35 +66,61 @@ export const integerRepl = (
   return E.right(typeof reply === "number");
 };
 
+export const integerReplAsync = (expectedReply?: number) => (
+  command: TE.TaskEither<Error, unknown>
+): TE.TaskEither<Error, boolean> =>
+  pipe(
+    command,
+    TE.map(reply => {
+      if (expectedReply !== undefined && expectedReply !== reply) {
+        return false;
+      }
+      return typeof reply === "number";
+    })
+  );
+
+/**
+ * Transform any Redis falsy response to an error
+ *
+ * @param response
+ * @param error
+ * @returns
+ */
 export const falsyResponseToError = (
   response: E.Either<Error, boolean>,
   error: Error
 ): E.Either<Error, true> => {
   if (E.isLeft(response)) {
-    return E.left(response.left);
+    return response;
   } else {
-    if (response.right) {
-      return E.right(true);
-    }
-    return E.left(error);
+    return response.right ? E.right(true) : E.left(error);
   }
 };
+
+export const falsyResponseToErrorAsync = (error: Error) => (
+  response: TE.TaskEither<Error, boolean>
+): TE.TaskEither<Error, true> =>
+  pipe(
+    response,
+    TE.chain(res => (res ? TE.right(res) : TE.left(error)))
+  );
 
 export const getTask = (
   redisClient: RedisClient,
   key: string
 ): TE.TaskEither<Error, O.Option<string>> =>
   pipe(
-    TE.tryCatch(
-      () =>
-        new Promise<E.Either<Error, O.Option<string>>>(resolve =>
-          redisClient.get(key, (err, response) =>
-            resolve(singleValueReply(err, response))
-          )
-        ),
-      E.toError
-    ),
-    TE.chain(TE.fromEither)
+    TE.tryCatch(() => redisClient.get(key), E.toError),
+    singleValueReplyAsync
+  );
+
+export const existsKeyTask = (
+  redisClient: RedisClient,
+  key: string
+): TE.TaskEither<Error, boolean> =>
+  pipe(
+    TE.tryCatch(() => redisClient.exists(key), E.toError),
+    integerReplAsync(1)
   );
 
 export const deleteTask = (
@@ -90,14 +128,6 @@ export const deleteTask = (
   key: string
 ): TE.TaskEither<Error, boolean> =>
   pipe(
-    TE.tryCatch(
-      () =>
-        new Promise<E.Either<Error, boolean>>(resolve =>
-          redisClient.del(key, (err, response) =>
-            resolve(integerRepl(err, response, 1))
-          )
-        ),
-      E.toError
-    ),
-    TE.chain(TE.fromEither)
+    TE.tryCatch(() => redisClient.del(key), E.toError),
+    integerReplAsync(1)
   );

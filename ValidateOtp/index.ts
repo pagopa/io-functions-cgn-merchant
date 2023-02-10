@@ -19,14 +19,17 @@ winston.add(contextTransport);
 const app = express();
 secureExpressApp(app);
 
-// Add express route
-app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(REDIS_CLIENT));
-
-const azureFunctionHandler = createAzureFunctionHandler(app);
-
 // Binds the express app to an Azure Function handler
-const httpStart = (context: Context): void => {
+const httpStart = async (context: Context): Promise<void> => {
   logger = context.log;
+
+  const redisClient = await REDIS_CLIENT;
+
+  // Add express route
+  app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(redisClient));
+
+  const azureFunctionHandler = createAzureFunctionHandler(app);
+
   setAppContext(app, context);
   azureFunctionHandler(context);
 };
