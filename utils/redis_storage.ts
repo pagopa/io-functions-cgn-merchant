@@ -110,7 +110,7 @@ export const getTask = (
   key: string
 ): TE.TaskEither<Error, O.Option<string>> =>
   pipe(
-    TE.tryCatch(() => redisClient.get(key), E.toError),
+    TE.tryCatch(() => redisClient.GET(key), E.toError),
     singleValueReplyAsync
   );
 
@@ -119,7 +119,7 @@ export const existsKeyTask = (
   key: string
 ): TE.TaskEither<Error, boolean> =>
   pipe(
-    TE.tryCatch(() => redisClient.exists(key), E.toError),
+    TE.tryCatch(() => redisClient.EXISTS(key), E.toError),
     integerReplAsync(1)
   );
 
@@ -128,6 +128,6 @@ export const deleteTask = (
   key: string
 ): TE.TaskEither<Error, boolean> =>
   pipe(
-    TE.tryCatch(() => redisClient.del(key), E.toError),
+    TE.tryCatch(() => redisClient.DEL(key), E.toError),
     integerReplAsync(1)
   );
