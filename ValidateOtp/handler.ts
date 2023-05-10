@@ -27,7 +27,7 @@ import { parse } from "fp-ts/lib/Json";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
-import { RedisClient, RedisClientFactory } from "../utils/redis";
+import { RedisClientFactory } from "../utils/redis";
 import { OtpCode } from "../generated/definitions/OtpCode";
 import { OtpValidationResponse } from "../generated/definitions/OtpValidationResponse";
 import { Timestamp } from "../generated/definitions/Timestamp";
