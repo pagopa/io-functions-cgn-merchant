@@ -6,8 +6,8 @@ import { AzureContextTransport } from "@pagopa/io-functions-commons/dist/src/uti
 import { setAppContext } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/context_middleware";
 import createAzureFunctionHandler from "@pagopa/express-azure-functions/dist/src/createAzureFunctionsHandler";
 import { RedisClientFactory } from "../utils/redis";
-import { ValidateOtp } from "./handler";
 import { getConfigOrThrow } from "../utils/config";
+import { ValidateOtp } from "./handler";
 
 const config = getConfigOrThrow();
 
