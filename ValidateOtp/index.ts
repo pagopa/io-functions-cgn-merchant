@@ -5,8 +5,11 @@ import { secureExpressApp } from "@pagopa/io-functions-commons/dist/src/utils/ex
 import { AzureContextTransport } from "@pagopa/io-functions-commons/dist/src/utils/logging";
 import { setAppContext } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/context_middleware";
 import createAzureFunctionHandler from "@pagopa/express-azure-functions/dist/src/createAzureFunctionsHandler";
-import { REDIS_CLIENT } from "../utils/redis";
+import { RedisClientFactory } from "../utils/redis";
 import { ValidateOtp } from "./handler";
+import { getConfigOrThrow } from "../utils/config";
+
+const config = getConfigOrThrow();
 
 // eslint-disable-next-line functional/no-let
 let logger: Context["log"] | undefined;
@@ -19,17 +22,16 @@ winston.add(contextTransport);
 const app = express();
 secureExpressApp(app);
 
+const redisClientFactory = new RedisClientFactory(config);
+
+// Add express route
+app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(redisClientFactory));
+
+const azureFunctionHandler = createAzureFunctionHandler(app);
+
 // Binds the express app to an Azure Function handler
-const httpStart = async (context: Context): Promise<void> => {
+const httpStart = (context: Context): void => {
   logger = context.log;
-
-  const redisClient = await REDIS_CLIENT;
-
-  // Add express route
-  app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(redisClient));
-
-  const azureFunctionHandler = createAzureFunctionHandler(app);
-
   setAppContext(app, context);
   azureFunctionHandler(context);
 };
