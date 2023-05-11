@@ -27,7 +27,7 @@ import { parse } from "fp-ts/lib/Json";
 import * as O from "fp-ts/lib/Option";
 import * as TE from "fp-ts/lib/TaskEither";
 import * as t from "io-ts";
-import { RedisClient } from "redis";
+import { RedisClientFactory } from "../utils/redis";
 import { OtpCode } from "../generated/definitions/OtpCode";
 import { OtpValidationResponse } from "../generated/definitions/OtpValidationResponse";
 import { Timestamp } from "../generated/definitions/Timestamp";
@@ -77,11 +77,11 @@ export type OtpResponseAndFiscalCode = t.TypeOf<
 >;
 
 const retrieveOtp = (
-  redisClient: RedisClient,
+  redisClientFactory: RedisClientFactory,
   otpCode: OtpCode
 ): TE.TaskEither<Error, O.Option<OtpResponseAndFiscalCode>> =>
   pipe(
-    getTask(redisClient, `${OTP_PREFIX}${otpCode}`),
+    getTask(redisClientFactory, `${OTP_PREFIX}${otpCode}`),
     TE.chain(
       O.fold(
         () => TE.of(O.none),
@@ -113,12 +113,12 @@ const retrieveOtp = (
   );
 
 const invalidateOtp = (
-  redisClient: RedisClient,
+  redisClientFactory: RedisClientFactory,
   otpCode: OtpCode,
   fiscalCode: FiscalCode
 ): TE.TaskEither<Error, true> =>
   pipe(
-    deleteTask(redisClient, `${OTP_PREFIX}${otpCode}`),
+    deleteTask(redisClientFactory, `${OTP_PREFIX}${otpCode}`),
     TE.chain(
       TE.fromPredicate(
         result => result,
@@ -126,7 +126,7 @@ const invalidateOtp = (
       )
     ),
     TE.chain(() =>
-      deleteTask(redisClient, `${OTP_FISCAL_CODE_PREFIX}${fiscalCode}`)
+      deleteTask(redisClientFactory, `${OTP_FISCAL_CODE_PREFIX}${fiscalCode}`)
     ),
     TE.chain(
       TE.fromPredicate(
@@ -138,7 +138,7 @@ const invalidateOtp = (
   );
 
 export const ValidateOtpHandler = (
-  redisClient: RedisClient,
+  redisClientFactory: RedisClientFactory,
   logPrefix: string = "ValidateOtpHandler"
 ): IGetValidateOtpHandler => async (
   context,
@@ -150,7 +150,7 @@ export const ValidateOtpHandler = (
     payload.otp_code.toString() as NonEmptyString
   );
   return pipe(
-    retrieveOtp(redisClient, payload.otp_code),
+    retrieveOtp(redisClientFactory, payload.otp_code),
     TE.mapLeft(_ =>
       errorLogMapping(_, ResponseErrorInternal("Cannot validate OTP Code"))
     ),
@@ -164,7 +164,7 @@ export const ValidateOtpHandler = (
           payload.invalidate_otp
             ? pipe(
                 invalidateOtp(
-                  redisClient,
+                  redisClientFactory,
                   payload.otp_code,
                   otpResponseAndFiscalCode.fiscalCode
                 ),
@@ -188,9 +188,9 @@ export const ValidateOtpHandler = (
 };
 
 export const ValidateOtp = (
-  redisClient: RedisClient
+  redisClientFactory: RedisClientFactory
 ): express.RequestHandler => {
-  const handler = ValidateOtpHandler(redisClient);
+  const handler = ValidateOtpHandler(redisClientFactory);
 
   const middlewaresWrap = withRequestMiddlewares(
     ContextMiddleware(),
