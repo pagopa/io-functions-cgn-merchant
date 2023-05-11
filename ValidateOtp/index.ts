@@ -5,8 +5,11 @@ import { secureExpressApp } from "@pagopa/io-functions-commons/dist/src/utils/ex
 import { AzureContextTransport } from "@pagopa/io-functions-commons/dist/src/utils/logging";
 import { setAppContext } from "@pagopa/io-functions-commons/dist/src/utils/middlewares/context_middleware";
 import createAzureFunctionHandler from "@pagopa/express-azure-functions/dist/src/createAzureFunctionsHandler";
-import { REDIS_CLIENT } from "../utils/redis";
+import { RedisClientFactory } from "../utils/redis";
+import { getConfigOrThrow } from "../utils/config";
 import { ValidateOtp } from "./handler";
+
+const config = getConfigOrThrow();
 
 // eslint-disable-next-line functional/no-let
 let logger: Context["log"] | undefined;
@@ -19,8 +22,10 @@ winston.add(contextTransport);
 const app = express();
 secureExpressApp(app);
 
+const redisClientFactory = new RedisClientFactory(config);
+
 // Add express route
-app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(REDIS_CLIENT));
+app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(redisClientFactory));
 
 const azureFunctionHandler = createAzureFunctionHandler(app);
 
