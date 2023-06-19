@@ -25,7 +25,7 @@ secureExpressApp(app);
 const redisClientFactory = new RedisClientFactory(config);
 
 // Add express route
-app.post("/api/v1/cgn/merchant/otp/validate", ValidateOtp(redisClientFactory));
+app.post("/api/v1/merchant/cgn/otp/validate", ValidateOtp(redisClientFactory));
 
 const azureFunctionHandler = createAzureFunctionHandler(app);
 
